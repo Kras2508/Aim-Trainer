@@ -30,7 +30,7 @@ from utils.sound_manager import SoundManager
 from screens import (
     MenuScreen, InstructionScreen, SettingsScreen,
     DifficultyScreen, CountdownScreen, PlayingScreen,
-    GameOverScreen, PauseScreen
+    GameOverScreen, PauseScreen, ModeSelectScreen, TrackingScreen
 )
 
 
@@ -80,15 +80,18 @@ def main():
     menu_screen = MenuScreen()
     instruction_screen = InstructionScreen()
     settings_screen = SettingsScreen(settings)
+    mode_select_screen = ModeSelectScreen()
     difficulty_screen = DifficultyScreen()
     countdown_screen = CountdownScreen()
     playing_screen = PlayingScreen()
+    tracking_screen = TrackingScreen()
     game_over_screen = GameOverScreen()
     pause_screen = PauseScreen()
 
     # Game state
     game_state = STATE_MENU
     selected_difficulty = 'MEDIUM'
+    selected_mode = MODE_CLASSIC
     game_duration = settings['game_duration'] * 1000
 
     # Game data dictionary (shared between screens)
@@ -97,6 +100,8 @@ def main():
         'hits': 0,
         'misses': 0,
         'score': 0,
+        'combo': 0,
+        'max_combo': 0,
         'hit_effects': [],
         'miss_effects': [],
         'reaction_times': [],
@@ -106,9 +111,16 @@ def main():
         'current_target_size': TARGET_SIZE_START,
         'game_duration': game_duration,
         'selected_difficulty': selected_difficulty,
+        'selected_mode': MODE_CLASSIC,
         'records': records,
         'sound_manager': sound_manager,
         'current_time': 0,
+        # Tracking mode data
+        'tracking_target': None,
+        'tracking_on_target_time': 0,
+        'tracking_total_time': 0,
+        'tracking_score_accum': 0.0,
+        'tracking_last_check': 0,
     }
 
     def reset_game():
@@ -117,12 +129,20 @@ def main():
         game_data['hits'] = 0
         game_data['misses'] = 0
         game_data['score'] = 0
+        game_data['combo'] = 0
+        game_data['max_combo'] = 0
         game_data['hit_effects'] = []
         game_data['miss_effects'] = []
         game_data['reaction_times'] = []
         game_data['last_spawn_time'] = 0
         game_data['current_target_size'] = TARGET_SIZE_START
         game_data['game_duration'] = settings['game_duration'] * 1000
+        # Tracking mode data
+        game_data['tracking_target'] = None
+        game_data['tracking_on_target_time'] = 0
+        game_data['tracking_total_time'] = 0
+        game_data['tracking_score_accum'] = 0.0
+        game_data['tracking_last_check'] = 0
         now = pygame.time.get_ticks()
         game_data['game_start_time'] = now
         game_data['countdown_start_time'] = now
@@ -209,6 +229,20 @@ def main():
                     game_state = result
                     settings_screen.return_state = STATE_MENU  # reset for next time
 
+            elif game_state == STATE_MODE_SELECT:
+                result = mode_select_screen.handle_events(event, mouse_pos)
+                if result is not None:
+                    sound_manager.play_click()
+                    new_state, mode = result
+                    if mode is not None:
+                        selected_mode = mode
+                        game_data['selected_mode'] = selected_mode
+                    # Tracking skips difficulty — go straight to countdown
+                    if mode == MODE_TRACKING:
+                        reset_game()
+                        pygame.mouse.set_visible(False)
+                    game_state = new_state
+
             elif game_state == STATE_DIFFICULTY:
                 result = difficulty_screen.handle_events(event, mouse_pos)
                 if result is not None:
@@ -222,12 +256,15 @@ def main():
                     game_state = new_state
 
             elif game_state == STATE_COUNTDOWN:
-                result = countdown_screen.handle_events(event)
+                result = countdown_screen.handle_events(event, selected_mode)
                 if result is not None:
                     game_state = result
 
             elif game_state == STATE_PLAYING:
-                result = playing_screen.handle_events(event, mouse_pos, game_data)
+                if selected_mode == MODE_TRACKING:
+                    result = tracking_screen.handle_events(event, mouse_pos, game_data)
+                else:
+                    result = playing_screen.handle_events(event, mouse_pos, game_data)
                 if result is not None:
                     if result == STATE_PAUSE:
                         # Warp OS mouse to match custom cursor pos on unpause
@@ -255,6 +292,8 @@ def main():
             instruction_screen.update(mouse_pos)
         elif game_state == STATE_SETTINGS:
             settings_screen.update(mouse_pos)
+        elif game_state == STATE_MODE_SELECT:
+            mode_select_screen.update(mouse_pos)
         elif game_state == STATE_DIFFICULTY:
             difficulty_screen.update(mouse_pos)
         elif game_state == STATE_COUNTDOWN:
@@ -262,8 +301,12 @@ def main():
                 sound_manager.play_go()
                 game_state = STATE_PLAYING
                 game_data['game_start_time'] = current_time
+                game_data['tracking_last_check'] = current_time
         elif game_state == STATE_PLAYING:
-            result = playing_screen.update(current_time, game_data, settings)
+            if selected_mode == MODE_TRACKING:
+                result = tracking_screen.update(current_time, dt, mouse_pos, game_data, settings)
+            else:
+                result = playing_screen.update(current_time, game_data, settings)
             if result is not None:
                 if result == STATE_GAME_OVER:
                     sound_manager.play_game_over()
@@ -282,12 +325,17 @@ def main():
             instruction_screen.draw(screen, fonts, settings['game_duration'], scale_x, scale_y)
         elif game_state == STATE_SETTINGS:
             settings_screen.draw(screen, fonts, scale_x, scale_y)
+        elif game_state == STATE_MODE_SELECT:
+            mode_select_screen.draw(screen, fonts, scale_x, scale_y)
         elif game_state == STATE_DIFFICULTY:
             difficulty_screen.draw(screen, fonts, scale_x, scale_y)
         elif game_state == STATE_COUNTDOWN:
-            countdown_screen.draw(screen, fonts, current_time, game_data['countdown_start_time'], selected_difficulty, scale_x, scale_y)
+            countdown_screen.draw(screen, fonts, current_time, game_data['countdown_start_time'], selected_difficulty, scale_x, scale_y, selected_mode)
         elif game_state == STATE_PLAYING:
-            playing_screen.draw(screen, fonts, mouse_pos, current_time, game_data, settings, scale_x, scale_y)
+            if selected_mode == MODE_TRACKING:
+                tracking_screen.draw(screen, fonts, mouse_pos, current_time, game_data, settings, scale_x, scale_y)
+            else:
+                playing_screen.draw(screen, fonts, mouse_pos, current_time, game_data, settings, scale_x, scale_y)
         elif game_state == STATE_GAME_OVER:
             game_over_screen.draw(screen, fonts, game_data, scale_x, scale_y)
         elif game_state == STATE_PAUSE:

@@ -8,6 +8,6 @@
   "crosshair_length": 0,
   "crosshair_outline": true,
   "crosshair_dot": true,
-  "crosshair_dot_size": 2,
-  "game_duration": 60
+  "crosshair_dot_size": 3,
+  "game_duration": 30
 }

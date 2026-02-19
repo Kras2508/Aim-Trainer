@@ -12,11 +12,11 @@ class CountdownScreen:
     def __init__(self):
         self._last_number = None  # Track which number was last shown for beep
     
-    def handle_events(self, event):
+    def handle_events(self, event, selected_mode=None):
         """Handle countdown events. Returns new state or None."""
         if event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE:
             pygame.mouse.set_visible(True)
-            return STATE_DIFFICULTY
+            return STATE_MODE_SELECT if selected_mode == MODE_TRACKING else STATE_DIFFICULTY
         return None
     
     def update(self, current_time, countdown_start_time, sound_manager=None):
@@ -40,7 +40,7 @@ class CountdownScreen:
         
         return countdown_elapsed >= COUNTDOWN_DURATION
     
-    def draw(self, screen, fonts, current_time, countdown_start_time, selected_difficulty, scale_x=1.0, scale_y=1.0):
+    def draw(self, screen, fonts, current_time, countdown_start_time, selected_difficulty, scale_x=1.0, scale_y=1.0, selected_mode=None):
         """Draw the countdown screen with scaling"""
         font_title, font_large, font, font_small = fonts
         
@@ -64,8 +64,9 @@ class CountdownScreen:
         surface = font_title.render(text, True, color)
         screen.blit(surface, surface.get_rect(center=(center_x, center_y)))
         
-        diff_text = font.render(f"Difficulty: {selected_difficulty}", True, UI_COLOR)
-        screen.blit(diff_text, diff_text.get_rect(center=(center_x, center_y + int(100 * scale_y))))
+        if selected_mode != MODE_TRACKING:
+            diff_text = font.render(f"Difficulty: {selected_difficulty}", True, UI_COLOR)
+            screen.blit(diff_text, diff_text.get_rect(center=(center_x, center_y + int(100 * scale_y))))
         
         esc_text = font_small.render("Press ESC to cancel", True, (100, 100, 100))
         screen.blit(esc_text, (actual_width - int(220 * scale_x), actual_height - int(30 * scale_y)))

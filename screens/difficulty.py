@@ -28,7 +28,7 @@ class DifficultyScreen:
             elif self.hard_button.is_clicked(mouse_pos):
                 return (STATE_COUNTDOWN, 'HARD')
             elif self.back_button.is_clicked(mouse_pos):
-                return (STATE_MENU, None)
+                return (STATE_MODE_SELECT, None)
         return None
     
     def update(self, mouse_pos):

@@ -22,7 +22,7 @@ class Slider:
         self.value = initial_val
         self.label = label
         self.dragging = False
-        self.handle_radius = 12
+        self.handle_radius = 7
         self.selected = False
         self.input_text = ""
         self.input_mode = False

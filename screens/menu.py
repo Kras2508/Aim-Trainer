@@ -24,7 +24,7 @@ class MenuScreen:
         """Handle menu events. Returns new game state or None."""
         if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
             if self.start_button.is_clicked(mouse_pos):
-                return STATE_DIFFICULTY
+                return STATE_MODE_SELECT
             elif self.instruction_button.is_clicked(mouse_pos):
                 return STATE_INSTRUCTION
             elif self.settings_button.is_clicked(mouse_pos):

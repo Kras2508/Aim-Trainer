@@ -32,16 +32,20 @@ class PlayingScreen:
             for target in game_data['targets']:
                 if target.alive and target.check_hit(mouse_pos):
                     game_data['hits'] += 1
+                    # Combo system
+                    game_data['combo'] = game_data.get('combo', 0) + 1
+                    game_data['max_combo'] = max(game_data.get('max_combo', 0), game_data['combo'])
+                    combo_mult = min(COMBO_MULTIPLIER_MAX, 1.0 + (game_data['combo'] - 1) * COMBO_MULTIPLIER_STEP)
                     # Calculate score
                     base_points = 100
                     bonus_cap = 50
                     reaction = target.reaction_time
                     ttl = target.lifetime
                     bonus = int(max(0, ttl - reaction) / ttl * bonus_cap)
-                    earned = base_points + bonus
+                    earned = int((base_points + bonus) * combo_mult)
                     game_data['score'] += earned
                     game_data['reaction_times'].append(reaction)
-                    game_data['hit_effects'].append((mouse_pos, current_time, earned))
+                    game_data['hit_effects'].append((mouse_pos, current_time, earned, game_data['combo']))
                     hit_registered = True
                     if game_data.get('sound_manager'):
                         game_data['sound_manager'].play_hit()
@@ -49,6 +53,7 @@ class PlayingScreen:
             
             if not hit_registered:
                 game_data['misses'] += 1
+                game_data['combo'] = 0  # Reset combo on miss
                 game_data['miss_effects'].append((mouse_pos, current_time))
                 if game_data.get('sound_manager'):
                     game_data['sound_manager'].play_miss()
@@ -92,6 +97,7 @@ class PlayingScreen:
             if (current_time - target.spawn_time) >= target.lifetime:
                 if target.alive:
                     game_data['misses'] += 1
+                    game_data['combo'] = 0  # Reset combo on timeout
                 targets.remove(target)
         
         # Difficulty progression
@@ -139,9 +145,11 @@ class PlayingScreen:
                 target.draw(screen, scale_x, scale_y)
         
         # Draw effects
-        game_data['hit_effects'] = [(pos, t, s) for pos, t, s in hit_effects if current_time - t < 400]
-        for pos, hit_time, score_earned in game_data['hit_effects']:
-            draw_hit_effect(screen, pos, current_time - hit_time, score_earned, scale_x, scale_y)
+        game_data['hit_effects'] = [e for e in hit_effects if current_time - e[1] < 400]
+        for effect in game_data['hit_effects']:
+            pos, hit_time, score_earned = effect[0], effect[1], effect[2]
+            combo_count = effect[3] if len(effect) > 3 else 0
+            draw_hit_effect(screen, pos, current_time - hit_time, score_earned, scale_x, scale_y, combo_count)
         
         game_data['miss_effects'] = [(pos, t) for pos, t in miss_effects if current_time - t < 300]
         for pos, miss_time in game_data['miss_effects']:
@@ -165,6 +173,8 @@ class PlayingScreen:
         accuracy = (hits / total_clicks * 100) if total_clicks > 0 else 0
         avg_reaction = sum(reaction_times) / len(reaction_times) if reaction_times else 0
         best_reaction = min(reaction_times) if reaction_times else 0
+        combo = game_data.get('combo', 0)
+        combo_mult = min(COMBO_MULTIPLIER_MAX, 1.0 + (combo - 1) * COMBO_MULTIPLIER_STEP) if combo > 0 else 1.0
         
         elapsed_time = current_time - game_start_time
         remaining_time = max(0, (game_duration - elapsed_time) // 1000)
@@ -174,6 +184,18 @@ class PlayingScreen:
         
         score_text = font.render(f"SCORE: {score}", True, SCORE_COLOR)
         screen.blit(score_text, (actual_width - int(200 * scale_x), int(20 * scale_y)))
+        
+        # Combo display (right side, below score)
+        if combo >= 2:
+            combo_color = (
+                min(255, 100 + combo * 20),
+                max(0, 255 - combo * 15),
+                50
+            )
+            combo_text = font.render(f"COMBO x{combo}", True, combo_color)
+            screen.blit(combo_text, (actual_width - int(200 * scale_x), int(55 * scale_y)))
+            mult_text = font_small.render(f"{combo_mult:.1f}x multiplier", True, ACCENT_COLOR)
+            screen.blit(mult_text, (actual_width - int(200 * scale_x), int(85 * scale_y)))
         
         stats = [
             (f"DIFFICULTY: {selected_difficulty}", UI_COLOR),

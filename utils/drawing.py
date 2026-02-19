@@ -83,8 +83,8 @@ def draw_crosshair(screen, pos, size=1.0, color=None, thickness=2, gap=5, length
         pygame.draw.circle(screen, color, (x, y), actual_dot_size)
 
 
-def draw_hit_effect(screen, pos, elapsed_time, score_earned=None, scale_x=1.0, scale_y=1.0):
-    """Draw Aimlab-style hit marker (expanding circle with score)"""
+def draw_hit_effect(screen, pos, elapsed_time, score_earned=None, scale_x=1.0, scale_y=1.0, combo=0):
+    """Draw Aimlab-style hit marker (expanding circle with score and combo)"""
     max_time = 400  # ms
     if elapsed_time > max_time:
         return
@@ -114,6 +114,19 @@ def draw_hit_effect(screen, pos, elapsed_time, score_earned=None, scale_x=1.0, s
         score_text = font.render(f"+{score_earned}", True, SCORE_COLOR)
         score_rect = score_text.get_rect(center=(x, y - int((30 + progress * 20) * scale_y)))
         screen.blit(score_text, score_rect)
+        
+        # Draw combo text if combo >= 2
+        if combo >= 2 and elapsed_time < 250:
+            combo_font_size = max(14, int(24 * scale_avg))
+            combo_font = pygame.font.SysFont(None, combo_font_size)
+            combo_color = (
+                min(255, 100 + combo * 20),
+                max(0, 255 - combo * 15),
+                50
+            )
+            combo_text = combo_font.render(f"x{combo} COMBO!", True, combo_color)
+            combo_rect = combo_text.get_rect(center=(x, y - int((50 + progress * 20) * scale_y)))
+            screen.blit(combo_text, combo_rect)
 
 
 def draw_miss_effect(screen, pos, elapsed_time, scale_x=1.0, scale_y=1.0):

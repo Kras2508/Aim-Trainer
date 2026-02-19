@@ -11,9 +11,11 @@ from .countdown import CountdownScreen
 from .playing import PlayingScreen
 from .game_over import GameOverScreen
 from .pause import PauseScreen
+from .mode_select import ModeSelectScreen
+from .tracking import TrackingScreen
 
 __all__ = [
     'MenuScreen', 'InstructionScreen', 'SettingsScreen',
     'DifficultyScreen', 'CountdownScreen', 'PlayingScreen',
-    'GameOverScreen', 'PauseScreen'
+    'GameOverScreen', 'PauseScreen', 'ModeSelectScreen', 'TrackingScreen'
 ]

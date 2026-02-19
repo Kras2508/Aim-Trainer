@@ -25,6 +25,13 @@ STATE_COUNTDOWN = 4
 STATE_PLAYING = 5
 STATE_GAME_OVER = 6
 STATE_PAUSE = 7
+STATE_MODE_SELECT = 8
+
+# -----------------------------
+# Game Modes
+# -----------------------------
+MODE_CLASSIC = 'CLASSIC'
+MODE_TRACKING = 'TRACKING'
 
 # -----------------------------
 # Game Timing
@@ -47,7 +54,7 @@ MARGIN = 80
 TARGET_MIN_LIFETIME = 1200    # ms
 TARGET_MAX_LIFETIME = 2000    # ms
 SPAWN_DELAY = 500              # ms between spawns
-MAX_TARGETS = 3                # max simultaneous targets
+MAX_TARGETS = 1                # 1 target at a time (MVP)
 
 # -----------------------------
 # Difficulty Settings
@@ -56,20 +63,20 @@ DIFFICULTIES = {
     'EASY': {
         'min_lifetime': 2000,
         'max_lifetime': 3000,
-        'spawn_delay': 800,
-        'max_targets': 2
+        'spawn_delay': 200,
+        'max_targets': 1
     },
     'MEDIUM': {
         'min_lifetime': 1200,
         'max_lifetime': 2000,
-        'spawn_delay': 500,
-        'max_targets': 3
+        'spawn_delay': 150,
+        'max_targets': 1
     },
     'HARD': {
         'min_lifetime': 800,
         'max_lifetime': 1500,
-        'spawn_delay': 300,
-        'max_targets': 5
+        'spawn_delay': 100,
+        'max_targets': 1
     }
 }
 
@@ -109,3 +116,21 @@ RESOLUTIONS = ['800x600', '1024x768', '1280x720', '1366x768', '1600x900', '1920x
 # -----------------------------
 BASE_POINTS = 100
 BONUS_CAP = 50
+
+# -----------------------------
+# Combo System
+# -----------------------------
+COMBO_MULTIPLIER_STEP = 0.1    # +0.1x per consecutive hit
+COMBO_MULTIPLIER_MAX = 2.0     # Max 2.0x multiplier
+
+# -----------------------------
+# Tracking Mode
+# -----------------------------
+TRACKING_TARGET_RADIUS = 40
+TRACKING_SCORE_PER_SECOND = 100   # Points per second on target
+TRACKING_CHECK_INTERVAL = 50      # ms between on-target checks
+TRACKING_HIT_COLOR = (100, 255, 150)   # Green glow when on target
+TRACKING_MISS_COLOR = (255, 80, 80)    # Red glow when off target
+
+# 3-phase speed progression (game time split into 3 equal segments)
+TRACKING_PHASE_SPEEDS = [0.2, 0.5, 1.0]   # Speed multiplier per phase

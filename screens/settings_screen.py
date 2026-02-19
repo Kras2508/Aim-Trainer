@@ -64,8 +64,8 @@ class SettingsScreen:
         # Toggles
         self.crosshair_outline = settings.get('crosshair_outline', True)
         self.crosshair_dot = settings.get('crosshair_dot', True)
-        self.outline_rect = pygame.Rect(self.SL_X, 0, 120, 30)
-        self.dot_rect = pygame.Rect(self.SL_X + 140, 0, 100, 30)
+        self.outline_rect = pygame.Rect(self.SL_X, 0, 190, 30)
+        self.dot_rect = pygame.Rect(self.SL_X + 210, 0, 150, 30)
         
         # Color selection
         self.selected_crosshair_color = settings['crosshair_color']
@@ -328,28 +328,51 @@ class SettingsScreen:
             int(self.dot_rect.height * scale_y)
         )
         
-        outline_color = (50, 150, 50) if self.crosshair_outline else (100, 50, 50)
-        pygame.draw.rect(screen, outline_color, outline_scaled)
-        pygame.draw.rect(screen, WHITE, outline_scaled, max(1, int(2 * (scale_x + scale_y) / 2)))
-        ol_label = "Outline: ON" if self.crosshair_outline else "Outline: OFF"
-        outline_text = font_small.render(ol_label, True, WHITE)
-        screen.blit(outline_text, outline_text.get_rect(center=outline_scaled.center))
+        # ── Toggle switches: "Label:" text + separate ON/OFF pill ──
+        for rect_scaled, is_on, label_text_str in [
+            (outline_scaled, self.crosshair_outline, "Outline:"),
+            (dot_scaled, self.crosshair_dot, "Dot:"),
+        ]:
+            # Draw label text on the left
+            lbl_surface = font_small.render(label_text_str, True, UI_COLOR)
+            screen.blit(lbl_surface, lbl_surface.get_rect(midleft=(rect_scaled.left, rect_scaled.centery)))
+            
+            # Draw ON/OFF pill switch to the right of label
+            lbl_w = lbl_surface.get_width() + int(10 * scale_x)
+            pill_w = int(44 * scale_x)
+            pill_h = int(24 * scale_y)
+            pill_x = rect_scaled.left + lbl_w
+            pill_y = rect_scaled.centery - pill_h // 2
+            pill_rect = pygame.Rect(pill_x, pill_y, pill_w, pill_h)
+            pill_r = pill_h // 2
+            
+            # Pill background
+            bg_color = (40, 130, 75) if is_on else (70, 55, 70)
+            pygame.draw.rect(screen, bg_color, pill_rect, border_radius=pill_r)
+            border_col = (80, 200, 120) if is_on else (100, 85, 110)
+            pygame.draw.rect(screen, border_col, pill_rect, max(1, int(2 * min(scale_x, scale_y))), border_radius=pill_r)
+            
+            # Sliding circle
+            circle_r = max(3, pill_h // 2 - max(2, int(3 * scale_y)))
+            if is_on:
+                cx = pill_rect.right - circle_r - max(2, int(4 * scale_x))
+                cc = (180, 255, 200)
+            else:
+                cx = pill_rect.left + circle_r + max(2, int(4 * scale_x))
+                cc = (140, 130, 150)
+            pygame.draw.circle(screen, cc, (cx, pill_rect.centery), circle_r)
         
-        dot_color = (50, 150, 50) if self.crosshair_dot else (100, 50, 50)
-        pygame.draw.rect(screen, dot_color, dot_scaled)
-        pygame.draw.rect(screen, WHITE, dot_scaled, max(1, int(2 * (scale_x + scale_y) / 2)))
-        d_label = "Dot: ON" if self.crosshair_dot else "Dot: OFF"
-        dot_text = font_small.render(d_label, True, WHITE)
-        screen.blit(dot_text, dot_text.get_rect(center=dot_scaled.center))
-        
-        # Preview (right side, same row as toggles)
-        preview_x = actual_width - int(200 * scale_x)
-        preview_y = outline_scaled.y
+        # ── Preview (right side, label above box with gap) ──
+        preview_w = int(140 * scale_x)
+        preview_h = int(70 * scale_y)
+        preview_x = actual_width - preview_w - int(30 * scale_x)
         preview_label = font_small.render("Preview:", True, UI_COLOR)
-        screen.blit(preview_label, (preview_x, preview_y - int(18 * scale_y)))
-        preview_bg = pygame.Rect(preview_x, preview_y, int(160 * scale_x), int(60 * scale_y))
-        pygame.draw.rect(screen, (30, 30, 50), preview_bg)
-        pygame.draw.rect(screen, (80, 80, 100), preview_bg, max(1, int(2 * (scale_x + scale_y) / 2)))
+        preview_label_y = outline_scaled.top
+        screen.blit(preview_label, (preview_x, preview_label_y))
+        preview_box_y = preview_label_y + preview_label.get_height() + int(6 * scale_y)
+        preview_bg = pygame.Rect(preview_x, preview_box_y, preview_w, preview_h)
+        pygame.draw.rect(screen, (20, 22, 38), preview_bg, border_radius=max(1, int(6 * min(scale_x, scale_y))))
+        pygame.draw.rect(screen, (70, 75, 100), preview_bg, max(1, int(2 * min(scale_x, scale_y))), border_radius=max(1, int(6 * min(scale_x, scale_y))))
         preview_color = CROSSHAIR_COLORS.get(self.selected_crosshair_color, CROSSHAIR_COLOR)
         # Preview crosshair needs base coords for centering
         draw_crosshair(screen, (preview_bg.centerx / scale_x, preview_bg.centery / scale_y),
