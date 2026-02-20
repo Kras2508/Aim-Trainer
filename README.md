@@ -276,17 +276,17 @@ y = random.randint(MARGIN, SCREEN_HEIGHT - MARGIN)
 # Validates no overlap with existing targets (80px minimum spacing)
 ```
 
----
-
-## 👨‍💻 Author
-
-**Khoa Kras** — Game Programming SEM252
 
 ---
 
-## 📝 Submission
+## Project Team
 
-- **GitHub Repository**: [https://github.com/Kras2508/Aim-Trainer](https://github.com/Kras2508/Aim-Trainer)
-- **Submission Date**: Week 02/03/2026
-- **Course**: Game Programming — SEM252
-- **Assignment**: Assignment 1 — Aim Trainer
+**Project owner / contacts: Group 11**
+
+**Team:**
+- Đỗ Đăng Khoa (Kras2508)
+- Nguyễn Minh Hưng
+- Nguyễn Phước Quý Bảo
+- Nguyễn Nguyên Ngọc
+
+---
