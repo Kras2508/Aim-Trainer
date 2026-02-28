@@ -12,6 +12,25 @@ Project Structure:
 import pygame
 import math
 import sys
+import ctypes
+from ctypes import wintypes
+
+# ─── Fix DPI Scaling for all Windows machines ────────────────
+def fix_dpi_awareness():
+    """Fix DPI scaling issues on Windows - call BEFORE pygame.init()"""
+    try:
+        if sys.platform == 'win32':
+            # Try modern DPI awareness (Windows 10+)
+            try:
+                ctypes.windll.shcore.SetProcessDpiAwareness(2)  # PROCESS_PER_MONITOR_DPI_AWARE
+            except:
+                # Fallback for older Windows
+                ctypes.windll.user32.SetProcessDPIAware()
+    except:
+        pass  # Non-Windows or permission denied, continue anyway
+
+# Call DPI fix immediately
+fix_dpi_awareness()
 
 # Import configuration
 from config import *
@@ -184,8 +203,35 @@ def main():
             custom_cy = BASE_HEIGHT // 2
             pygame.mouse.get_rel()  # consume stale delta
             pygame.event.set_grab(True)  # lock mouse inside window
+            pygame.mouse.set_visible(False)  # hide system cursor
+            # Force lock mouse using Windows API (works on all DPI/multi-monitor setups)
+            try:
+                hwnd = pygame.display.get_wm_info()['window']
+                rect = wintypes.RECT()
+                ctypes.windll.user32.GetWindowRect(hwnd, ctypes.byref(rect))
+                ctypes.windll.user32.ClipCursor(ctypes.byref(rect))
+            except:
+                pass  # Non-Windows, use pygame grab only
         elif not in_gameplay and prev_game_state in (STATE_PLAYING, STATE_COUNTDOWN):
             pygame.event.set_grab(False)  # release mouse
+            pygame.mouse.set_visible(True)  # show cursor in menus
+            # Release Windows API mouse lock
+            try:
+                ctypes.windll.user32.ClipCursor(None)
+            except:
+                pass
+        
+        # Force clamp mouse position during gameplay (backup for edge cases)
+        if in_gameplay:
+            try:
+                raw_x, raw_y = pygame.mouse.get_pos()
+                clamped_x = max(0, min(raw_x, display_width - 1))
+                clamped_y = max(0, min(raw_y, display_height - 1))
+                if raw_x != clamped_x or raw_y != clamped_y:
+                    pygame.mouse.set_pos(clamped_x, clamped_y)
+            except:
+                pass
+        
         prev_game_state = game_state
 
         # ─── Event handling ──────────────────────────────────────
@@ -205,6 +251,15 @@ def main():
                 scale = min(scale_x, scale_y)
                 fonts = create_fonts(scale)
                 screen_info = {'scale_x': scale_x, 'scale_y': scale_y, 'scale': scale}
+                # Update mouse lock bounds if in gameplay
+                if in_gameplay:
+                    try:
+                        hwnd = pygame.display.get_wm_info()['window']
+                        rect = wintypes.RECT()
+                        ctypes.windll.user32.GetWindowRect(hwnd, ctypes.byref(rect))
+                        ctypes.windll.user32.ClipCursor(ctypes.byref(rect))
+                    except:
+                        pass
                 continue
 
             # Dispatch event to current screen
@@ -346,6 +401,14 @@ def main():
 
         pygame.display.flip()
 
+    # Cleanup: Release mouse lock before quitting
+    pygame.event.set_grab(False)
+    pygame.mouse.set_visible(True)
+    try:
+        ctypes.windll.user32.ClipCursor(None)  # Release Windows API mouse lock
+    except:
+        pass
+    
     pygame.quit()
     sys.exit()
 
