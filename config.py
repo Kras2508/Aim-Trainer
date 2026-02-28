@@ -133,4 +133,4 @@ TRACKING_HIT_COLOR = (100, 255, 150)   # Green glow when on target
 TRACKING_MISS_COLOR = (255, 80, 80)    # Red glow when off target
 
 # 3-phase speed progression (game time split into 3 equal segments)
-TRACKING_PHASE_SPEEDS = [0.2, 0.5, 1.0]   # Speed multiplier per phase
+TRACKING_PHASE_SPEEDS = [0.2, 0.5, 0.8]   # Speed multiplier per phase

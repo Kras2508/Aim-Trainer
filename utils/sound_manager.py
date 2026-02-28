@@ -112,52 +112,86 @@ def create_game_over_sound():
 
 
 def generate_bgm_buffer():
-    """Generate a short ambient background music loop (8 seconds).
-    Uses layered sine waves with chord progressions for a chill vibe."""
-    duration = 8.0  # seconds, will loop
+    """Generate an intense/upbeat background music loop (8 seconds).
+    Procedural: kick + hats + pulsing bass + fast arp lead."""
+    duration = 8.0
     n = int(SAMPLE_RATE * duration)
     samples = [0.0] * n
 
-    # Chord progression: Am → F → C → G (each 2 sec)
-    chords = [
-        (220, 261.63, 329.63),    # Am: A3, C4, E4
-        (174.61, 220, 261.63),    # F:  F3, A3, C4
-        (261.63, 329.63, 392),    # C:  C4, E4, G4
-        (196, 246.94, 293.66),    # G:  G3, B3, D4
-    ]
-    chord_len = n // len(chords)
+    bpm = 150
+    beat = 60.0 / bpm              # seconds per beat
+    step = beat / 4.0              # 16th-note step
+    steps_per_loop = int(duration / step)
 
-    for ci, chord in enumerate(chords):
-        start = ci * chord_len
-        end = min(start + chord_len, n)
-        for i in range(start, end):
-            t = i / SAMPLE_RATE
-            # Crossfade envelope for smooth transitions
-            local = (i - start) / chord_len
-            fade_in = min(1, local * 10) if ci > 0 else min(1, local * 5)
-            fade_out = min(1, (1 - local) * 10)
-            env = fade_in * fade_out * 0.08  # Keep it quiet
+    # Minor-ish tense scale (A minor / A aeolian)
+    scale = [220.00, 246.94, 261.63, 293.66, 329.63, 349.23, 392.00, 440.00]  # A3..A4
 
-            wave = 0.0
-            for freq in chord:
-                wave += math.sin(2 * math.pi * freq * t)
-                # Add subtle octave below for warmth
-                wave += 0.3 * math.sin(2 * math.pi * freq * 0.5 * t)
+    def soft_clip(x):
+        # Simple saturation to avoid harsh clipping
+        return max(-1.0, min(1.0, x * 0.8))
 
-            # Slow pulsating LFO for movement
-            lfo = 0.7 + 0.3 * math.sin(2 * math.pi * 0.5 * t)
-            samples[i] += wave * env * lfo
-
-    # Add a soft pad high note
     for i in range(n):
         t = i / SAMPLE_RATE
-        pad = 0.02 * math.sin(2 * math.pi * 523.25 * t)  # C5
-        pad *= 0.5 + 0.5 * math.sin(2 * math.pi * 0.25 * t)  # slow LFO
-        samples[i] += pad
+
+        # ---- Rhythm grid ----
+        s = int(t / step) % steps_per_loop          # 16th index
+        within = (t % step) / step                  # 0..1 inside step
+        beat_idx = int(t / beat) % int(duration / beat)
+
+        out = 0.0
+
+        # ---- Kick (on 1 and 3, plus a few extra for drive) ----
+        kick_hit = (s % 16 == 0) or (s % 16 == 8) or (s % 32 == 20)
+        if kick_hit:
+            # Exponential decay envelope within the step
+            env = math.exp(-within * 12.0)
+            # Pitch drop for punch: 110 -> 55 Hz
+            freq = 110.0 - 55.0 * within
+            out += math.sin(2 * math.pi * freq * t) * env * 0.55
+            # Add a tiny click transient
+            out += (random.random() * 2 - 1) * env * 0.06
+
+        # ---- Hi-hat (noise on every 16th; stronger on offbeats) ----
+        hat_env = math.exp(-within * 18.0)
+        hat_amp = 0.10 if (s % 4 != 0) else 0.06  # emphasize offbeats
+        out += (random.random() * 2 - 1) * hat_env * hat_amp
+
+        # ---- Snare/Clap (on 2 and 4) ----
+        snare_hit = (s % 16 == 4) or (s % 16 == 12)
+        if snare_hit:
+            env = math.exp(-within * 10.0)
+            noise = (random.random() * 2 - 1)
+            tone = math.sin(2 * math.pi * 200.0 * t)
+            out += (0.8 * noise + 0.2 * tone) * env * 0.22
+
+        # ---- Pulsing bass (sidechain-ish duck with kick feel) ----
+        # Bass note changes every 2 beats for motion
+        bass_note = [220.0, 196.0, 246.94, 174.61]  # A3, G3, B3, F3-ish tension
+        bass = bass_note[(beat_idx // 2) % len(bass_note)]
+
+        # Bass gate (8th-note) + subtle wobble
+        bass_gate = 0.35 + 0.65 * (1 if (s % 8 < 4) else 0)
+        wobble = 0.85 + 0.15 * math.sin(2 * math.pi * 6.0 * t)
+        bass_env = bass_gate * wobble
+
+        # Sidechain style duck right after kick
+        duck = 1.0 - 0.5 * math.exp(-((t % beat) / beat) * 8.0)
+        bass_wave = math.sin(2 * math.pi * bass * t) + 0.35 * math.sin(2 * math.pi * bass * 2 * t)
+        out += bass_wave * bass_env * duck * 0.14
+
+        # ---- Fast arp lead (16th notes) ----
+        # Pattern picks notes from the scale; jumps add urgency
+        arp_pattern = [0, 2, 4, 2, 5, 4, 2, 6]
+        note = scale[arp_pattern[s % len(arp_pattern)]]
+        lead_env = math.exp(-within * 9.0)
+        lead = math.sin(2 * math.pi * note * 2.0 * t)  # octave up
+        lead += 0.3 * math.sin(2 * math.pi * note * 4.0 * t)  # shimmer harmonic
+        out += lead * lead_env * 0.10
+
+        # ---- Master level + saturation ----
+        samples[i] = soft_clip(out)
 
     return _make_sound(samples)
-
-
 class SoundManager:
     """Manages all game sounds"""
 
