@@ -2,12 +2,12 @@
   "mouse_sensitivity": 0.575,
   "volume": 0.03,
   "crosshair_size": 0.9875,
-  "crosshair_color": "Green",
+  "crosshair_color": "Red",
   "crosshair_thickness": 1,
   "crosshair_gap": 0,
   "crosshair_length": 0,
   "crosshair_outline": true,
   "crosshair_dot": true,
-  "crosshair_dot_size": 3,
+  "crosshair_dot_size": 1,
   "game_duration": 30
 }

@@ -393,13 +393,81 @@ Thời gian game chia đều thành 3 giai đoạn:
 | 3 | Fast | 1.0x | Tốc độ cao, thử thách |
 
 ### 7.4. Tính điểm Tracking
+
+Điểm Tracking được tính dựa trên **thời gian giữ crosshair trên target**, không phải click như Classic.
+
+#### Công thức chính
 ```
 score_rate = TRACKING_SCORE_PER_SECOND × (1 + phase × 0.25)
-score += score_rate × (check_dt / 1000)
+score     += score_rate × (check_dt / 1000)
+score hiển thị = int(score tích lũy)
 ```
-- Kiểm tra mỗi 50ms (`TRACKING_CHECK_INTERVAL`)
-- Chỉ tích điểm khi crosshair nằm trong vùng target
-- Phase cao hơn cho nhiều điểm hơn (+25% mỗi phase)
+
+#### Các hằng số liên quan (`config.py`)
+
+| Hằng số | Giá trị | Ý nghĩa |
+|---------|---------|---------|
+| `TRACKING_SCORE_PER_SECOND` | 100 | Điểm cơ bản mỗi giây on-target |
+| `TRACKING_CHECK_INTERVAL` | 50ms | Kiểm tra mỗi 50ms (20 lần/giây) |
+| `TRACKING_TARGET_RADIUS` | 40px | Bán kính vùng tính on-target |
+
+#### Cơ chế hoạt động (`tracking.py`, dòng 180–190)
+
+1. **Mỗi 50ms**, game kiểm tra crosshair có nằm trong vùng bán kính target không (`check_on_target`)
+2. `check_dt` = thời gian thực từ lần check trước (≥ 50ms)
+3. **Luôn luôn**: `tracking_total_time += check_dt` — tích lũy tổng thời gian
+4. **Nếu ON target**: `tracking_on_target_time += check_dt` — tích lũy thời gian on-target + **tính điểm**
+5. **Nếu OFF target**: Không được điểm, nhưng vẫn tăng `total_time` → accuracy giảm
+
+#### Score rate theo Phase
+
+| Phase | Tên | Tốc độ target | score_rate (điểm/giây) | Công thức |
+|-------|-----|---------------|------------------------|-----------|
+| 0 (Slow) | Phase 1 | 0.2x | **100** | `100 × (1 + 0 × 0.25) = 100` |
+| 1 (Medium) | Phase 2 | 0.5x | **125** | `100 × (1 + 1 × 0.25) = 125` |
+| 2 (Fast) | Phase 3 | 1.0x | **150** | `100 × (1 + 2 × 0.25) = 150` |
+
+→ Phase càng cao thì thưởng điểm **+25%** mỗi cấp, bù đắp cho việc target di chuyển nhanh hơn.
+
+#### Ví dụ cụ thể
+
+**Ví dụ 1 — Game 60 giây, accuracy 80% đều ở cả 3 phase (mỗi phase 20 giây):**
+
+| Phase | Thời gian on-target | Score rate | Điểm nhận được |
+|-------|---------------------|------------|----------------|
+| Phase 1 (Slow) | 16s (80%) | 100 pts/s | 16 × 100 = **1600** |
+| Phase 2 (Medium) | 16s (80%) | 125 pts/s | 16 × 125 = **2000** |
+| Phase 3 (Fast) | 16s (80%) | 150 pts/s | 16 × 150 = **2400** |
+| **Tổng** | 48s / 60s | — | **6000 điểm** |
+
+**Ví dụ 2 — Game 60 giây, accuracy giảm dần theo phase:**
+
+| Phase | Thời gian on-target | Score rate | Điểm nhận được |
+|-------|---------------------|------------|----------------|
+| Phase 1 (Slow) | 18s (90%) | 100 pts/s | 18 × 100 = **1800** |
+| Phase 2 (Medium) | 14s (70%) | 125 pts/s | 14 × 125 = **1750** |
+| Phase 3 (Fast) | 10s (50%) | 150 pts/s | 10 × 150 = **1500** |
+| **Tổng** | 42s / 60s (70%) | — | **5050 điểm** |
+
+#### Accuracy Tracking (dùng để lưu kỷ lục)
+
+```
+accuracy = (tracking_on_target_time / tracking_total_time) × 100%
+```
+
+- Kỷ lục lưu theo **accuracy %**, không phải score
+- Key lưu: `"TRACKING"` trong `records.json`
+- Chỉ cập nhật kỷ lục nếu `accuracy > records["TRACKING"]`
+
+#### So sánh với Classic Mode
+
+| Yếu tố | Classic | Tracking |
+|---------|---------|----------|
+| Cách tính | Điểm mỗi **click trúng** | Điểm mỗi **giây on-target** |
+| Combo | Có (tối đa 2.0x) | Không |
+| Phase bonus | Không | Có (+25% mỗi phase) |
+| Kỷ lục | Accuracy riêng mỗi độ khó | Accuracy chung 1 key |
+| Điểm cơ bản | 100 + bonus (0–50) mỗi hit | 100–150 pts/giây tùy phase |
 
 ### 7.5. HUD Tracking
 - Timer đếm ngược (giữa trên)
