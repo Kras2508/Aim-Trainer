@@ -221,16 +221,10 @@ def main():
             except:
                 pass
         
-        # Force clamp mouse position during gameplay (backup for edge cases)
-        if in_gameplay:
-            try:
-                raw_x, raw_y = pygame.mouse.get_pos()
-                clamped_x = max(0, min(raw_x, display_width - 1))
-                clamped_y = max(0, min(raw_y, display_height - 1))
-                if raw_x != clamped_x or raw_y != clamped_y:
-                    pygame.mouse.set_pos(clamped_x, clamped_y)
-            except:
-                pass
+        # Note: Mouse clamping during gameplay is handled by ClipCursor (Windows)
+        # and pygame.event.set_grab(True). Do NOT call pygame.mouse.set_pos()
+        # here — it creates a reverse delta that get_rel() picks up next frame,
+        # causing the in-game cursor to move in the opposite direction on some machines.
         
         prev_game_state = game_state
 
