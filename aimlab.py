@@ -138,6 +138,9 @@ def main():
         'records': records,
         'sound_manager': sound_manager,
         'current_time': 0,
+        # Pause tracking
+        'pause_start_time': 0,
+        'total_paused_time': 0,
         # Tracking mode data
         'tracking_target': None,
         'tracking_on_target_time': 0,
@@ -160,6 +163,9 @@ def main():
         game_data['last_spawn_time'] = 0
         game_data['current_target_size'] = TARGET_SIZE_START
         game_data['game_duration'] = settings['game_duration'] * 1000
+        # Pause tracking
+        game_data['pause_start_time'] = 0
+        game_data['total_paused_time'] = 0
         # Tracking mode data
         game_data['tracking_target'] = None
         game_data['tracking_on_target_time'] = 0
@@ -322,6 +328,8 @@ def main():
                     result = playing_screen.handle_events(event, mouse_pos, game_data)
                 if result is not None:
                     if result == STATE_PAUSE:
+                        # Record when pause started
+                        game_data['pause_start_time'] = current_time
                         # Warp OS mouse to match custom cursor pos on unpause
                         pygame.mouse.set_pos(int(custom_cx / sx), int(custom_cy / sy))
                     game_state = result
@@ -338,6 +346,18 @@ def main():
                     sound_manager.play_click()
                     if result == STATE_SETTINGS:
                         settings_screen.return_state = STATE_PAUSE
+                    if result == STATE_PLAYING:
+                        # Accumulate total paused duration when resuming
+                        paused_duration = current_time - game_data['pause_start_time']
+                        game_data['total_paused_time'] += paused_duration
+                        # Shift spawn/check timestamps so targets don't expire during pause
+                        game_data['last_spawn_time'] += paused_duration
+                        # Shift individual target spawn times
+                        for t in game_data['targets']:
+                            t.spawn_time += paused_duration
+                        # Tracking mode: shift last check time
+                        if game_data.get('tracking_last_check'):
+                            game_data['tracking_last_check'] += paused_duration
                     game_state = result
 
         # ─── Update ─────────────────────────────────────────────
@@ -356,6 +376,7 @@ def main():
                 sound_manager.play_go()
                 game_state = STATE_PLAYING
                 game_data['game_start_time'] = current_time
+                game_data['total_paused_time'] = 0  # Reset paused time for new game
                 game_data['tracking_last_check'] = current_time
         elif game_state == STATE_PLAYING:
             if selected_mode == MODE_TRACKING:

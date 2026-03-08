@@ -131,7 +131,8 @@ class TrackingScreen:
     
     def update(self, current_time, dt, mouse_pos, game_data, settings):
         """Update tracking mode logic. Returns STATE_GAME_OVER if time's up, else None."""
-        elapsed_time = current_time - game_data['game_start_time']
+        total_paused = game_data.get('total_paused_time', 0)
+        elapsed_time = current_time - game_data['game_start_time'] - total_paused
         game_duration = game_data['game_duration']
         
         if elapsed_time >= game_duration:
@@ -228,7 +229,8 @@ class TrackingScreen:
         phase = game_data.get('_tracking_phase', 0)
         phase_labels = ["PHASE 1 — Slow", "PHASE 2 — Medium", "PHASE 3 — Fast"]
         
-        elapsed_time = current_time - game_start_time
+        total_paused = game_data.get('total_paused_time', 0)
+        elapsed_time = current_time - game_start_time - total_paused
         remaining_time = max(0, (game_duration - elapsed_time) // 1000)
         timer_color = UI_COLOR if remaining_time > 10 else MISS_EFFECT_COLOR
         timer_text = font_large.render(str(remaining_time), True, timer_color)

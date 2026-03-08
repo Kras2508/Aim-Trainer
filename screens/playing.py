@@ -67,7 +67,8 @@ class PlayingScreen:
                              game_duration, last_spawn_time, current_target_size,
                              selected_difficulty, records
         """
-        elapsed_time = current_time - game_data['game_start_time']
+        total_paused = game_data.get('total_paused_time', 0)
+        elapsed_time = current_time - game_data['game_start_time'] - total_paused
         game_duration = game_data['game_duration']
         
         if elapsed_time >= game_duration:
@@ -176,7 +177,8 @@ class PlayingScreen:
         combo = game_data.get('combo', 0)
         combo_mult = min(COMBO_MULTIPLIER_MAX, 1.0 + (combo - 1) * COMBO_MULTIPLIER_STEP) if combo > 0 else 1.0
         
-        elapsed_time = current_time - game_start_time
+        total_paused = game_data.get('total_paused_time', 0)
+        elapsed_time = current_time - game_start_time - total_paused
         remaining_time = max(0, (game_duration - elapsed_time) // 1000)
         timer_color = UI_COLOR if remaining_time > 10 else MISS_EFFECT_COLOR
         timer_text = font_large.render(str(remaining_time), True, timer_color)
